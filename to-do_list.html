@@ -527,9 +527,10 @@
 
 <header class="topbar">
   <h1>🗺️ To-Do List</h1>
-  <div class="topbar-actions">
-    <button class="btn-ghost btn-small" id="openDistanceConfigBtn">📍 Distanze</button>
-	 <button class="btn-ghost btn-small" id="shareCodeBtn" style="display:none;">📋 Condividi</button>
+<div class="topbar-actions">
+  <button class="btn-ghost btn-small" id="shareCodeBtn" style="display:none;">📋 Condividi</button>
+  <button class="btn-ghost btn-small" id="syncBtn" style="display:none;">☁️ Sincronizza</button>
+  <button class="btn-ghost btn-small" id="openDistanceConfigBtn">📍 Distanze</button>
     <label class="file-label btn-small">
       ⬆ Importa
       <input type="file" id="importFile" accept=".json" hidden />
@@ -752,7 +753,7 @@
 		<div class="modal-footer">
 		  <button type="button" class="btn-red hidden" id="deleteSingleBtn">🗑 Elimina</button>
 		  <button type="button" class="btn-ghost hidden" id="duplicateBtn">⧉ Duplica</button>
-		  <button type="button" class="btn-ghost hidden" id="calcSingleDistanceBtn">📍 Calcola distanza</button>
+		  <button type="button" class="btn-ghost hidden" id="calcSingleDistanceBtn">📍 Distanza</button>
 		  <button type="submit" class="btn-primary">💾 Salva</button>
 		</div>
     </form>
