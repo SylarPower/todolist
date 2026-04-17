@@ -532,11 +532,12 @@
   <button class="btn-ghost btn-small" id="shareCodeBtn" style="display:none;">📋 Condividi</button>
   <button class="btn-ghost btn-small" id="syncBtn" style="display:none;">☁️ Sincronizza</button>
   <button class="btn-ghost btn-small" id="openDistanceConfigBtn">📍 Distanze</button>
-    <label class="file-label btn-small">
-      ⬆ Importa
-      <input type="file" id="importFile" accept=".json" hidden />
-    </label>
-  </div>
+  <button class="btn-ghost btn-small" id="exportBtn">⬇ Esporta</button>
+  <label class="file-label btn-small">
+    ⬆ Importa
+    <input type="file" id="importFile" accept=".json" hidden />
+  </label>
+</div>
 </header>
 
 <main class="wrap">
@@ -2295,7 +2296,7 @@ function initSwipe() {
 
 function initEvents() {
 
-  // Swipe actions
+  // Swipe actions (markdone / undo / delete)
   $('activityList').addEventListener('click', e => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
@@ -2325,10 +2326,11 @@ function initEvents() {
     removeType(el.dataset.type);
   });
 
-  // ✅ CODICE DI CONDIVISIONE
+  // ==================== CONDIVISIONE ====================
   if ($('shareCodeBtn')) {
     $('shareCodeBtn').addEventListener('click', () => {
-      const choice = confirm('Genera codice (OK) o entra in un gruppo (Annulla)?');
+      const choice = confirm('Vuoi GENERARE un nuovo codice da condividere (OK)\no ENTRARE in un gruppo esistente (Annulla)?');
+      
       if (choice) {
         generateShareCode();
       } else {
@@ -2364,15 +2366,20 @@ function initEvents() {
     });
   }
 
-  // Mostra bottone quando sincronizzazione è attiva
+  // Mostra/nascondi pulsanti sincronizzazione
   setInterval(() => {
     if ($('shareCodeBtn')) {
       $('shareCodeBtn').style.display = syncEnabled ? 'inline-flex' : 'none';
     }
-  }, 500);
+    if ($('syncBtn')) {
+      $('syncBtn').style.display = syncEnabled ? 'inline-flex' : 'none';
+    }
+  }, 800);
 
-  // Filters
-  ['searchInput', 'fType', 'fRegion', 'fProvincia', 'fComune', 'fDone', 'sortBy'].forEach(id => {
+  // ==================== ALTRI EVENTI ====================
+
+  // Filtri
+  ['searchInput','fType','fRegion','fProvincia','fComune','fDone','sortBy'].forEach(id => {
     $(id).addEventListener('input', () => {
       saveFilters();
       render();
@@ -2380,7 +2387,7 @@ function initEvents() {
   });
 
   $('clearFiltersBtn').addEventListener('click', () => {
-    ['searchInput', 'fType', 'fRegion', 'fProvincia', 'fComune', 'fDone', 'filterDistanceType', 'filterDistanceValue']
+    ['searchInput','fType','fRegion','fProvincia','fComune','fDone','filterDistanceType','filterDistanceValue']
       .forEach(id => $(id).value = '');
     $('filterDistanceValue').disabled = true;
     saveFilters();
@@ -2407,14 +2414,15 @@ function initEvents() {
   });
 
   $('fabBtn').addEventListener('click', openNewModal);
+
   $('closeActModal').addEventListener('click', closeActModal);
   $('actModal').addEventListener('click', e => {
     if (e.target === $('actModal')) closeActModal();
   });
+
   $('actForm').addEventListener('submit', handleActFormSubmit);
   $('deleteSingleBtn').addEventListener('click', handleDeleteFromModal);
   $('duplicateBtn').addEventListener('click', handleDuplicateFromModal);
-
   $('calcSingleDistanceBtn').addEventListener('click', () => {
     const id = $('fId').value;
     if (id) calculateSingleDistance(id);
@@ -2427,13 +2435,8 @@ function initEvents() {
     }
   });
 
-  $('mRegione').addEventListener('change', () => {
-    handleRegioneChange('mRegione', 'mProvincia', 'mComune');
-  });
-
-  $('mProvincia').addEventListener('change', () => {
-    handleProvinciaChange('mRegione', 'mProvincia', 'mComune');
-  });
+  $('mRegione').addEventListener('change', () => handleRegioneChange('mRegione', 'mProvincia', 'mComune'));
+  $('mProvincia').addEventListener('change', () => handleProvinciaChange('mRegione', 'mProvincia', 'mComune'));
 
   $('toggleTypeManager').addEventListener('click', () => {
     const content = $('typeManagerContent');
@@ -2441,7 +2444,6 @@ function initEvents() {
   });
 
   $('addTypeBtn').addEventListener('click', addType);
-
   $('newTypeName').addEventListener('keypress', e => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -2491,9 +2493,7 @@ function initEvents() {
   $('filterDistanceType').addEventListener('change', e => {
     const hasValue = e.target.value !== '';
     $('filterDistanceValue').disabled = !hasValue;
-    if (!hasValue) {
-      $('filterDistanceValue').value = '';
-    }
+    if (!hasValue) $('filterDistanceValue').value = '';
     saveFilters();
     render();
   });
