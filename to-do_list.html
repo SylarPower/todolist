@@ -529,7 +529,7 @@
   <h1>🗺️ To-Do List</h1>
   <div class="topbar-actions">
     <button class="btn-ghost btn-small" id="openDistanceConfigBtn">📍 Distanze</button>
-    <button class="btn-ghost btn-small" id="exportBtn">⬇ Esporta</button>
+	 <button class="btn-ghost btn-small" id="shareCodeBtn" style="display:none;">📋 Condividi</button>
     <label class="file-label btn-small">
       ⬆ Importa
       <input type="file" id="importFile" accept=".json" hidden />
@@ -808,7 +808,25 @@
     </div>
   </div>
 </div>
-
+<!-- MODAL CODICE DI CONDIVISIONE -->
+<div class="modal-overlay hidden" id="joinCodeModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>📋 Entra nel gruppo</h2>
+      <button class="btn-ghost" style="padding:8px 12px;" id="closeJoinModal">✕</button>
+    </div>
+    <div style="padding: 20px;">
+      <p style="color: var(--muted); margin-bottom: 16px;">
+        Chiedi un codice a chi ha già l'app
+      </p>
+      <input type="text" id="codeInput" placeholder="Inserisci il codice..." 
+             style="width: 100%; background: var(--card2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 12px; font-size: 16px; margin-bottom: 16px; text-transform: uppercase;">
+      <button class="btn-primary" id="joinCodeBtn" style="width: 100%; padding: 12px;">
+        ✅ Entra nel gruppo
+      </button>
+    </div>
+  </div>
+</div>
 <script>
 'use strict';
 
@@ -891,7 +909,47 @@ function loadWaConfig() {
     if (raw) waConfig = JSON.parse(raw);
   } catch {}
 }
+/* ═══════════════════════════════════════════════════════
+   CODICE DI CONDIVISIONE
+═══════════════════════════════════════════════════════ */
 
+function generateShareCode() {
+  if (!userId) {
+    toast('⏳ Aspetta che la sincronizzazione si attivi...', 'var(--orange)');
+    return;
+  }
+
+  // Crea un codice breve e facile da leggere
+  const code = userId.substring(0, 12).toUpperCase();
+  
+  // Copia negli appunti
+  navigator.clipboard.writeText(code).then(() => {
+    toast(`✅ Codice copiato: ${code}`, 'var(--accent2)');
+    console.log(`📋 Codice di condivisione: ${code}`);
+    alert(`📋 Codice di condivisione:\n\n${code}\n\nCopiato negli appunti!`);
+  }).catch(() => {
+    alert(`📋 Codice di condivisione:\n\n${code}`);
+  });
+}
+
+function joinWithCode(code) {
+  if (!code || code.length < 8) {
+    alert('❌ Codice non valido');
+    return;
+  }
+
+  // Quando uno entra con il codice, salva lo stesso user_id
+  localStorage.setItem('todolist_user_id', code);
+  
+  userId = code;
+  syncEnabled = true;
+  
+  // Ricarica le attività
+  loadActivitiesFromCloud();
+  
+  toast('✅ Connesso al gruppo!', 'var(--green)');
+  console.log(`Connesso con codice: ${code}`);
+}
 function saveDistanceConfig() {
   localStorage.setItem(DISTANCE_CONFIG_KEY, JSON.stringify(distanceConfig));
 }
@@ -2247,24 +2305,15 @@ function initEvents() {
       toggleDone(id);
     } else if (action === 'swipedelete') {
       deleteSingle(id);
+    } else if (action === 'wa') {
+      openWaConfigSingle(btn.dataset.target);
+    } else if (action === 'calendar') {
+      openCalendar(btn.dataset.target);
+    } else if (action === 'maps') {
+      openMaps(btn.dataset.target);
+    } else if (action === 'link') {
+      openLink(btn.dataset.target);
     }
-  });
-
-  // Bottoni activity actions (WA, Calendar, Maps, Link)
-  $('activityList').addEventListener('click', e => {
-    const btn = e.target.closest('[data-target]');
-    if (!btn || !btn.dataset.action) return;
-
-    e.stopPropagation();
-    e.preventDefault();
-
-    const id = btn.dataset.target;
-    const action = btn.dataset.action;
-
-    if (action === 'wa') openWaConfigSingle(id);
-    else if (action === 'calendar') openCalendar(id);
-    else if (action === 'maps') openMaps(id);
-    else if (action === 'link') openLink(id);
   });
 
   // Type manager
@@ -2273,6 +2322,52 @@ function initEvents() {
     if (!el) return;
     removeType(el.dataset.type);
   });
+
+  // ✅ CODICE DI CONDIVISIONE
+  if ($('shareCodeBtn')) {
+    $('shareCodeBtn').addEventListener('click', () => {
+      const choice = confirm('Genera codice (OK) o entra in un gruppo (Annulla)?');
+      if (choice) {
+        generateShareCode();
+      } else {
+        $('joinCodeModal').classList.remove('hidden');
+      }
+    });
+  }
+
+  if ($('closeJoinModal')) {
+    $('closeJoinModal').addEventListener('click', () => {
+      $('joinCodeModal').classList.add('hidden');
+    });
+  }
+
+  if ($('joinCodeBtn')) {
+    $('joinCodeBtn').addEventListener('click', () => {
+      const code = $('codeInput').value.trim().toUpperCase();
+      if (code) {
+        joinWithCode(code);
+        $('joinCodeModal').classList.add('hidden');
+        $('codeInput').value = '';
+      } else {
+        toast('❌ Inserisci un codice valido', 'var(--red)');
+      }
+    });
+  }
+
+  if ($('codeInput')) {
+    $('codeInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') {
+        $('joinCodeBtn').click();
+      }
+    });
+  }
+
+  // Mostra bottone quando sincronizzazione è attiva
+  setInterval(() => {
+    if ($('shareCodeBtn')) {
+      $('shareCodeBtn').style.display = syncEnabled ? 'inline-flex' : 'none';
+    }
+  }, 500);
 
   // Filters
   ['searchInput', 'fType', 'fRegion', 'fProvincia', 'fComune', 'fDone', 'sortBy'].forEach(id => {
@@ -2302,12 +2397,12 @@ function initEvents() {
     render();
   });
 
-$('compactMode').addEventListener('change', e => {
-  compactMode = e.target.checked;
-  saveCompactMode();
-  expandedIds.clear();
-  render();
-});
+  $('compactMode').addEventListener('change', e => {
+    compactMode = e.target.checked;
+    saveCompactMode();
+    expandedIds.clear();
+    render();
+  });
 
   $('fabBtn').addEventListener('click', openNewModal);
   $('closeActModal').addEventListener('click', closeActModal);
@@ -2317,6 +2412,11 @@ $('compactMode').addEventListener('change', e => {
   $('actForm').addEventListener('submit', handleActFormSubmit);
   $('deleteSingleBtn').addEventListener('click', handleDeleteFromModal);
   $('duplicateBtn').addEventListener('click', handleDuplicateFromModal);
+
+  $('calcSingleDistanceBtn').addEventListener('click', () => {
+    const id = $('fId').value;
+    if (id) calculateSingleDistance(id);
+  });
 
   $('fLink').addEventListener('input', e => {
     let v = e.target.value;
@@ -2400,11 +2500,10 @@ $('compactMode').addEventListener('change', e => {
     saveFilters();
     render();
   });
-  // Calcolo distanza singola
-  $('calcSingleDistanceBtn').addEventListener('click', () => {
-    const id = $('fId').value;
-    if (id) calculateSingleDistance(id);
-  });
+
+  if ($('syncBtn')) {
+    $('syncBtn').addEventListener('click', syncToCloud);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -2414,11 +2513,19 @@ $('compactMode').addEventListener('change', e => {
 window.activities = activities;
 
 document.addEventListener('DOMContentLoaded', () => {
+  // ✅ Registra Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+  }
+
   load();
   loadTypes();
   loadWaConfig();
   loadDistanceConfig();
-initSupabase(); // ← Aggiungi questa riga
+  
+  // ✅ Init Supabase (crea o carica user_id)
+  initSupabase();
+
   if (comuniData.length > 0) {
     populateRegioni('fRegion');
     populateRegioni('mRegione');
@@ -2426,9 +2533,17 @@ initSupabase(); // ← Aggiungi questa riga
 
   populateTypeSelect();
   renderTypeList();
-loadFilters();
-loadCompactMode();
-render();
+  loadFilters();
+  loadCompactMode();
+  render();
+
+  // ✅ Bottone per generare/mostrare il codice
+  $('shareCodeBtn').addEventListener('click', generateShareCode);
+
+  // ✅ Mostra bottone quando sincronizzazione è attiva
+  setInterval(() => {
+    $('shareCodeBtn').style.display = syncEnabled ? 'inline-flex' : 'none';
+  }, 500);
 
   initMultiSelect();
   initSwipe();
@@ -2446,18 +2561,32 @@ function initSupabase() {
   try {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    supabase.auth.signInAnonymously().then(({ data, error }) => {
-      if (error) {
-        console.error('Auth error:', error);
-        return;
-      }
-      
-      userId = data.user.id;
+    // ✅ Controlla se abbiamo già un user_id salvato
+    const savedUserId = localStorage.getItem('todolist_user_id');
+    
+    if (savedUserId) {
+      // ✅ Usa lo stesso user_id di prima (condiviso!)
+      userId = savedUserId;
       syncEnabled = true;
-      
       toast('☁️ Cloud attivo', 'var(--accent2)');
       loadActivitiesFromCloud();
-    });
+    } else {
+      // ✅ Nuovo utente, genera un user_id
+      supabase.auth.signInAnonymously().then(({ data, error }) => {
+        if (error) {
+          console.error('Auth error:', error);
+          return;
+        }
+        
+        userId = data.user.id.substring(0, 12).toUpperCase();
+        // ✅ SALVA l'user_id in localStorage
+        localStorage.setItem('todolist_user_id', userId);
+        syncEnabled = true;
+        
+        toast('☁️ Cloud attivo - Nuovo codice generato', 'var(--accent2)');
+        loadActivitiesFromCloud();
+      });
+    }
   } catch (e) {
     console.log('Supabase offline');
   }
