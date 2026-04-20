@@ -2322,18 +2322,6 @@ if ($('shareCodeBtn')) {
   $('shareCodeBtn').addEventListener('click', showShareCode);
 }
 
-// Rimuovi gli altri listener (closeJoinModal, joinCodeBtn, codeInput) perché non servono più
-
-  // Mostra/nascondi pulsanti sincronizzazione
-  setInterval(() => {
-    if ($('shareCodeBtn')) {
-      $('shareCodeBtn').style.display = syncEnabled ? 'inline-flex' : 'none';
-    }
-    if ($('syncBtn')) {
-      $('syncBtn').style.display = syncEnabled ? 'inline-flex' : 'none';
-    }
-  }, 800);
-
   // ==================== ALTRI EVENTI ====================
 
   // Filtri
@@ -2496,14 +2484,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loadFilters();
   loadCompactMode();
   render();
-
-  // ✅ Bottone per generare/mostrare il codice
-  $('shareCodeBtn').addEventListener('click', generateShareCode);
-
-  // ✅ Mostra bottone quando sincronizzazione è attiva
-  setInterval(() => {
-    $('shareCodeBtn').style.display = syncEnabled ? 'inline-flex' : 'none';
-  }, 500);
 
   initMultiSelect();
   initSwipe();
