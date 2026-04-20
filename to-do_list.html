@@ -2556,9 +2556,15 @@ document.addEventListener('DOMContentLoaded', () => {
    SUPABASE SYNC
 ═══════════════════════════════════════════════════════ */
 
-function initSupabase() {
+async function initSupabase() {
+  // Verifica che le credenziali siano state impostate
+  if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_KEY.length < 100) {
+    console.error('❌ SUPABASE_URL o SUPABASE_KEY non configurate correttamente!');
+    toast('⚠️ Cloud non configurato - Modalità offline', 'var(--orange)');
+    return;
+  }
+
   try {
-    // Usiamo supabaseClient invece di supabase
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
     const savedUserId = localStorage.getItem('todolist_user_id');
@@ -2566,22 +2572,32 @@ function initSupabase() {
     if (savedUserId) {
       userId = savedUserId;
       syncEnabled = true;
-      loadActivitiesFromCloud().then(() => {
-          subscribeToChanges(); // <--- ATTIVA IL REALTIME
-      });
+      console.log('🔄 Caricamento dati cloud...');
+      
+      await loadActivitiesFromCloud();
+      subscribeToChanges();
+      
+      toast('☁️ Sincronizzazione attiva', 'var(--accent2)');
     } else {
-      supabaseClient.auth.signInAnonymously().then(({ data, error }) => {
-        if (error) return;
-        userId = data.user.id.substring(0, 12).toUpperCase();
-        localStorage.setItem('todolist_user_id', userId);
-        syncEnabled = true;
-        loadActivitiesFromCloud().then(() => {
-            subscribeToChanges(); // <--- ATTIVA IL REALTIME
-        });
-      });
+      console.log('🆕 Nuovo utente, creazione ID anonimo...');
+      
+      const { data, error } = await supabaseClient.auth.signInAnonymously();
+      
+      if (error) {
+        throw new Error('Errore autenticazione: ' + error.message);
+      }
+
+      userId = data.user.id.substring(0, 12).toUpperCase();
+      localStorage.setItem('todolist_user_id', userId);
+      syncEnabled = true;
+      
+      subscribeToChanges();
+      toast('☁️ Cloud attivato - Codice: ' + userId, 'var(--accent2)');
     }
   } catch (e) {
-    console.log('Supabase offline', e);
+    console.error('❌ Errore Supabase:', e);
+    syncEnabled = false;
+    toast('⚠️ Errore cloud - App funziona solo offline', 'var(--red)');
   }
 }
 
