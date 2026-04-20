@@ -571,8 +571,8 @@
       <div class="sort-left">
         <label style="color:var(--muted);font-size:13px;font-weight:600;">Ordina per:</label>
         <select id="sortBy">
-          <option value="createdAt-desc">Più recenti</option>
-          <option value="createdAt-asc">Meno recenti</option>
+          <option value="createdat-desc">Più recenti</option>
+          <option value="createdat-asc">Meno recenti</option>
           <option value="title-asc">Titolo A→Z</option>
           <option value="title-desc">Titolo Z→A</option>
           <option value="eventDate-asc">Data evento ↑</option>
@@ -1687,7 +1687,7 @@ function toggleDone(id) {
   const a = activities.find(x => x.id === id);
   if (!a) return;
   a.done = !a.done;
-  a.updatedAt = new Date().toISOString();
+  a.updatedat = new Date().toISOString();
   save();
   render();
 }
@@ -1720,7 +1720,7 @@ function bulkSetDone(done) {
   activities.forEach(a => {
     if (selectedIds.has(a.id)) {
       a.done = done;
-      a.updatedAt = now;
+      a.updatedat = now;
     }
   });
   save();
@@ -1823,7 +1823,7 @@ function handleActFormSubmit(e) {
     description: $('fDesc').value.trim(),
     link: $('fLink').value.trim(),
     done: $('fDone').checked,
-    updatedAt: new Date().toISOString()
+    updatedat: new Date().toISOString()
   };
 
   if (!data.title) {
@@ -1832,7 +1832,7 @@ function handleActFormSubmit(e) {
   }
 
   if (isNew) {
-    activities.unshift({ id: uid(), ...data, createdAt: data.updatedAt });
+    activities.unshift({ id: uid(), ...data, createdat: data.updatedat });
     toast('✅ Aggiunta!');
   } else {
     const existing = activities.find(a => a.id === id);
@@ -1874,8 +1874,8 @@ function handleDuplicateFromModal() {
     id: uid(),
     title: a.title + ' (copia)',
     done: false,
-    createdAt: now,
-    updatedAt: now,
+    createdat: now,
+    updatedat: now,
     distanceData: a.distanceData
   });
   save();
@@ -1968,8 +1968,8 @@ function importActivities(file) {
         link: imp.link || '',
         done: !!imp.done,
         distanceData: imp.distanceData || null,
-        createdAt: imp.createdAt || new Date().toISOString(),
-        updatedAt: imp.updatedAt || new Date().toISOString()
+        createdat: imp.createdat || new Date().toISOString(),
+        updatedat: imp.updatedat || new Date().toISOString()
       }));
 
       if (choice) {
