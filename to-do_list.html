@@ -531,7 +531,6 @@
   <h1>🗺️ To-Do List</h1>
 <div class="topbar-actions">
   <button class="btn-ghost btn-small" id="shareCodeBtn" style="display:none;">📋 Condividi</button>
-  <button class="btn-ghost btn-small" id="syncBtn" style="display:none;">☁️ Sincronizza</button>
   <button class="btn-ghost btn-small" id="openDistanceConfigBtn">📍 Distanze</button>
   <button class="btn-ghost btn-small" id="exportBtn">⬇ Esporta</button>
   <label class="file-label btn-small">
@@ -812,25 +811,6 @@
     </div>
   </div>
 </div>
-<!-- MODAL CODICE DI CONDIVISIONE -->
-<div class="modal-overlay hidden" id="joinCodeModal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <h2>📋 Entra nel gruppo</h2>
-      <button class="btn-ghost" style="padding:8px 12px;" id="closeJoinModal">✕</button>
-    </div>
-    <div style="padding: 20px;">
-      <p style="color: var(--muted); margin-bottom: 16px;">
-        Chiedi un codice a chi ha già l'app
-      </p>
-      <input type="text" id="codeInput" placeholder="Inserisci il codice..." 
-             style="width: 100%; background: var(--card2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 12px; font-size: 16px; margin-bottom: 16px; text-transform: uppercase;">
-      <button class="btn-primary" id="joinCodeBtn" style="width: 100%; padding: 12px;">
-        ✅ Entra nel gruppo
-      </button>
-    </div>
-  </div>
-</div>
 <script>
 'use strict';
 
@@ -882,7 +862,7 @@ function uid() {
 
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(activities));
-  syncToCloud(); // ← Aggiungi questa riga
+  syncToCloud(); // Sincronizza automaticamente ogni volta che salvi
 }
 
 function load() {
@@ -914,45 +894,55 @@ function loadWaConfig() {
   } catch {}
 }
 /* ═══════════════════════════════════════════════════════
-   CODICE DI CONDIVISIONE
+   CODICE DI CONDIVISIONE - VERSIONE SEMPLIFICATA
 ═══════════════════════════════════════════════════════ */
 
-function generateShareCode() {
+function showShareCode() {
   if (!userId) {
-    toast('⏳ Aspetta che la sincronizzazione si attivi...', 'var(--orange)');
+    toast('⏳ Attendi inizializzazione...', 'var(--orange)');
     return;
   }
 
-  // Crea un codice breve e facile da leggere
-  const code = userId.substring(0, 12).toUpperCase();
-  
+  const message = `📋 CODICE GRUPPO:\n\n${userId}\n\n` +
+    `Condividi questo codice con chi vuoi.\n` +
+    `Chi lo inserisce vedrà e potrà modificare le stesse attività.\n\n` +
+    `Per entrare: quando apri l'app per la prima volta, ` +
+    `inserisci questo codice quando richiesto.`;
+
   // Copia negli appunti
-  navigator.clipboard.writeText(code).then(() => {
-    toast(`✅ Codice copiato: ${code}`, 'var(--accent2)');
-    console.log(`📋 Codice di condivisione: ${code}`);
-    alert(`📋 Codice di condivisione:\n\n${code}\n\nCopiato negli appunti!`);
-  }).catch(() => {
-    alert(`📋 Codice di condivisione:\n\n${code}`);
-  });
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(userId).then(() => {
+      alert(message + '\n\n✅ Codice copiato negli appunti!');
+    }).catch(() => {
+      alert(message);
+    });
+  } else {
+    alert(message);
+  }
 }
 
-function joinWithCode(code) {
-  if (!code || code.length < 8) {
-    alert('❌ Codice non valido');
-    return;
-  }
+function promptForGroupCode() {
+  const code = prompt(
+    '📋 ENTRA IN UN GRUPPO\n\n' +
+    'Se qualcuno ti ha dato un codice gruppo, inseriscilo qui.\n' +
+    'Vedrai le stesse attività e potrai modificarle insieme.\n\n' +
+    'Lascia vuoto per creare un nuovo gruppo personale.'
+  );
 
-  // Quando uno entra con il codice, salva lo stesso user_id
-  localStorage.setItem('todolist_user_id', code);
+  if (code === null) return; // Annullato
   
-  userId = code;
-  syncEnabled = true;
-  
-  // Ricarica le attività
-  loadActivitiesFromCloud();
-  
-  toast('✅ Connesso al gruppo!', 'var(--green)');
-  console.log(`Connesso con codice: ${code}`);
+  if (code && code.trim()) {
+    // Salva il codice condiviso
+    const cleanCode = code.trim().toUpperCase();
+    localStorage.setItem('todolist_user_id', cleanCode);
+    userId = cleanCode;
+    syncEnabled = true;
+    
+    // Ricarica i dati dal cloud
+    loadActivitiesFromCloud().then(() => {
+      toast('✅ Gruppo connesso!', 'var(--green)');
+    });
+  }
 }
 function saveDistanceConfig() {
   localStorage.setItem(DISTANCE_CONFIG_KEY, JSON.stringify(distanceConfig));
@@ -2327,45 +2317,12 @@ function initEvents() {
     removeType(el.dataset.type);
   });
 
-  // ==================== CONDIVISIONE ====================
-  if ($('shareCodeBtn')) {
-    $('shareCodeBtn').addEventListener('click', () => {
-      const choice = confirm('Vuoi GENERARE un nuovo codice da condividere (OK)\no ENTRARE in un gruppo esistente (Annulla)?');
-      
-      if (choice) {
-        generateShareCode();
-      } else {
-        $('joinCodeModal').classList.remove('hidden');
-      }
-    });
-  }
+ // ==================== CONDIVISIONE ====================
+if ($('shareCodeBtn')) {
+  $('shareCodeBtn').addEventListener('click', showShareCode);
+}
 
-  if ($('closeJoinModal')) {
-    $('closeJoinModal').addEventListener('click', () => {
-      $('joinCodeModal').classList.add('hidden');
-    });
-  }
-
-  if ($('joinCodeBtn')) {
-    $('joinCodeBtn').addEventListener('click', () => {
-      const code = $('codeInput').value.trim().toUpperCase();
-      if (code) {
-        joinWithCode(code);
-        $('joinCodeModal').classList.add('hidden');
-        $('codeInput').value = '';
-      } else {
-        toast('❌ Inserisci un codice valido', 'var(--red)');
-      }
-    });
-  }
-
-  if ($('codeInput')) {
-    $('codeInput').addEventListener('keypress', e => {
-      if (e.key === 'Enter') {
-        $('joinCodeBtn').click();
-      }
-    });
-  }
+// Rimuovi gli altri listener (closeJoinModal, joinCodeBtn, codeInput) perché non servono più
 
   // Mostra/nascondi pulsanti sincronizzazione
   setInterval(() => {
@@ -2557,9 +2514,8 @@ document.addEventListener('DOMContentLoaded', () => {
 ═══════════════════════════════════════════════════════ */
 
 async function initSupabase() {
-  // Verifica credenziali
   if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_KEY.length < 100) {
-    console.error('❌ SUPABASE_URL o SUPABASE_KEY non valide!');
+    console.error('❌ Credenziali Supabase mancanti');
     toast('⚠️ Cloud non configurato', 'var(--orange)');
     return;
   }
@@ -2567,31 +2523,44 @@ async function initSupabase() {
   try {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    // Controlla se esiste già un user_id salvato
+    // Controlla se esiste già un user_id (codice gruppo)
     let savedUserId = localStorage.getItem('todolist_user_id');
     
     if (!savedUserId) {
-      // Genera un nuovo ID univoco (senza autenticazione)
-      savedUserId = 'USER_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10).toUpperCase();
-      localStorage.setItem('todolist_user_id', savedUserId);
-      console.log('🆕 Nuovo codice generato:', savedUserId);
+      // PRIMA VOLTA: chiedi se vuole entrare in un gruppo o crearne uno nuovo
+      const wantsToJoin = confirm(
+        '👋 Benvenuto!\n\n' +
+        'OK = Entra in un gruppo esistente (ti verrà chiesto il codice)\n' +
+        'ANNULLA = Crea un nuovo gruppo personale'
+      );
+      
+      if (wantsToJoin) {
+        // Chiedi il codice
+        promptForGroupCode();
+        return; // Esce, la funzione ripartirà dopo il reload
+      } else {
+        // Crea nuovo gruppo
+        savedUserId = 'GRP_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8).toUpperCase();
+        localStorage.setItem('todolist_user_id', savedUserId);
+        toast('🎉 Nuovo gruppo creato!', 'var(--accent2)');
+      }
     }
     
     userId = savedUserId;
     syncEnabled = true;
     
-    console.log('🔄 Caricamento dati cloud per user:', userId);
+    console.log('🔄 Caricamento gruppo:', userId);
     
-    // Carica i dati esistenti
+    // Carica le attività del gruppo
     await loadActivitiesFromCloud();
     
-    // Attiva il realtime
+    // Attiva sincronizzazione automatica in tempo reale
     subscribeToChanges();
     
-    toast('☁️ Sincronizzazione attiva', 'var(--accent2)');
+    toast('☁️ Sincronizzazione attiva', 'var(--green)');
     
   } catch (e) {
-    console.error('❌ Errore Supabase:', e);
+    console.error('❌ Errore:', e);
     syncEnabled = false;
     toast('⚠️ Modalità offline', 'var(--red)');
   }
@@ -2619,31 +2588,56 @@ async function loadActivitiesFromCloud() {
 }
 
 async function syncToCloud() {
-  if (!syncEnabled || !userId) return;
+  if (!syncEnabled || !userId || !supabaseClient) return;
 
   const now = Date.now();
-  if (now - lastSync < 1000) return;
+  if (now - lastSync < 1000) return; // Evita sync troppo frequenti
   lastSync = now;
 
   try {
+    // 1. Carica tutti gli ID esistenti nel cloud per questo gruppo
+    const { data: cloudData, error: fetchError } = await supabaseClient
+      .from('activities')
+      .select('id')
+      .eq('user_id', userId);
+
+    if (fetchError) throw fetchError;
+
+    const cloudIds = new Set(cloudData ? cloudData.map(a => a.id) : []);
+    const localIds = new Set(activities.map(a => a.id));
+
+    // 2. Trova gli ID da eliminare (presenti nel cloud ma non in locale)
+    const idsToDelete = [...cloudIds].filter(id => !localIds.has(id));
+
+    // 3. Elimina dal cloud le attività cancellate localmente
+    if (idsToDelete.length > 0) {
+      await supabaseClient
+        .from('activities')
+        .delete()
+        .in('id', idsToDelete);
+    }
+
+    // 4. Sincronizza tutte le attività locali
     const dataToSync = activities.map(a => ({
       ...a,
       user_id: userId
     }));
 
-    const { error } = await supabaseClient
+    const { error: upsertError } = await supabaseClient
       .from('activities')
-      .upsert(dataToSync); // Supabase usa già la Primary Key 'id' per il conflitto
+      .upsert(dataToSync);
 
-    if (error) throw error;
+    if (upsertError) throw upsertError;
+
+    console.log('✅ Sincronizzazione completata');
+
   } catch (err) {
-    console.error('Sync error:', err);
+    console.error('❌ Errore sync:', err);
   }
 }
 function subscribeToChanges() {
   if (!supabaseClient || !userId) return;
 
-  // Ascolta ogni cambiamento nella tabella 'activities' per l'utente corrente
   supabaseClient
     .channel('realtime_activities')
     .on('postgres_changes', { 
@@ -2652,8 +2646,8 @@ function subscribeToChanges() {
       table: 'activities', 
       filter: `user_id=eq.${userId}` 
     }, (payload) => {
-      console.log('Cambio ricevuto dal cloud:', payload);
-      loadActivitiesFromCloud(); // Ricarica la lista quando ricevi un aggiornamento
+      console.log('📥 Cambio ricevuto:', payload);
+      loadActivitiesFromCloud(); // Ricarica quando qualcun altro modifica
     })
     .subscribe();
 }
