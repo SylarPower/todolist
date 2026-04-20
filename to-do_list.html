@@ -844,8 +844,8 @@ const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImQ4MzA
 // SUPABASE CONFIG
 // ═══════════════════════════════════════════════════════
 
-const SUPABASE_URL = 'https://jqugfopdzxiunidlsyvg.supabase.co';  // ← Sostituisci con il tuo Project URL
-const SUPABASE_KEY = 'sb_publishable_g5uvvsHrCFJ4GQnfv6AqsA_3Ufum7ju';                   // ← Sostituisci con la tua anon public key
+const SUPABASE_URL = 'https://mwicplgacecjaeyzbuhx.supabase.co';  // ← Sostituisci con il tuo Project URL
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13aWNwbGdhY2VjamFleXpidWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MjU1MTYsImV4cCI6MjA5MjAwMTUxNn0.MkxJ2Pkcs-t4OArgIzC5RxBZ-PWWL_tAme2IgcFvU8Q';                   // ← Sostituisci con la tua anon public key
 
 let supabaseClient = null
 let userId = null;
@@ -2552,10 +2552,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initSwipe();
   initEvents();
 });
-// Registro Service Worker (all'inizio del DOMContentLoaded)
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/service-worker.js').catch(() => {});
-}
 /* ═══════════════════════════════════════════════════════
    SUPABASE SYNC
 ═══════════════════════════════════════════════════════ */
