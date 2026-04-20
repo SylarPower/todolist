@@ -2557,47 +2557,43 @@ document.addEventListener('DOMContentLoaded', () => {
 ═══════════════════════════════════════════════════════ */
 
 async function initSupabase() {
-  // Verifica che le credenziali siano state impostate
+  // Verifica credenziali
   if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_KEY.length < 100) {
-    console.error('❌ SUPABASE_URL o SUPABASE_KEY non configurate correttamente!');
-    toast('⚠️ Cloud non configurato - Modalità offline', 'var(--orange)');
+    console.error('❌ SUPABASE_URL o SUPABASE_KEY non valide!');
+    toast('⚠️ Cloud non configurato', 'var(--orange)');
     return;
   }
 
   try {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    const savedUserId = localStorage.getItem('todolist_user_id');
+    // Controlla se esiste già un user_id salvato
+    let savedUserId = localStorage.getItem('todolist_user_id');
     
-    if (savedUserId) {
-      userId = savedUserId;
-      syncEnabled = true;
-      console.log('🔄 Caricamento dati cloud...');
-      
-      await loadActivitiesFromCloud();
-      subscribeToChanges();
-      
-      toast('☁️ Sincronizzazione attiva', 'var(--accent2)');
-    } else {
-      console.log('🆕 Nuovo utente, creazione ID anonimo...');
-      
-      const { data, error } = await supabaseClient.auth.signInAnonymously();
-      
-      if (error) {
-        throw new Error('Errore autenticazione: ' + error.message);
-      }
-
-      userId = data.user.id.substring(0, 12).toUpperCase();
-      localStorage.setItem('todolist_user_id', userId);
-      syncEnabled = true;
-      
-      subscribeToChanges();
-      toast('☁️ Cloud attivato - Codice: ' + userId, 'var(--accent2)');
+    if (!savedUserId) {
+      // Genera un nuovo ID univoco (senza autenticazione)
+      savedUserId = 'USER_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10).toUpperCase();
+      localStorage.setItem('todolist_user_id', savedUserId);
+      console.log('🆕 Nuovo codice generato:', savedUserId);
     }
+    
+    userId = savedUserId;
+    syncEnabled = true;
+    
+    console.log('🔄 Caricamento dati cloud per user:', userId);
+    
+    // Carica i dati esistenti
+    await loadActivitiesFromCloud();
+    
+    // Attiva il realtime
+    subscribeToChanges();
+    
+    toast('☁️ Sincronizzazione attiva', 'var(--accent2)');
+    
   } catch (e) {
     console.error('❌ Errore Supabase:', e);
     syncEnabled = false;
-    toast('⚠️ Errore cloud - App funziona solo offline', 'var(--red)');
+    toast('⚠️ Modalità offline', 'var(--red)');
   }
 }
 
