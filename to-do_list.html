@@ -518,9 +518,10 @@
 <!-- PWA Manifest -->
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%236366f1' width='180' height='180'/><text x='50%' y='50%' font-size='80' fill='white' text-anchor='middle' dy='.3em' font-weight='bold'>TD</text></svg>">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="To-Do List">
+<link rel="icon" href="data:,"> <!-- Evita l'errore 404 della favicon -->
 <meta name="theme-color" content="#0f172a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -846,7 +847,7 @@ const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImQ4MzA
 const SUPABASE_URL = 'https://jqugfopdzxiunidlsyvg.supabase.co';  // ← Sostituisci con il tuo Project URL
 const SUPABASE_KEY = 'sb_publishable_g5uvvsHrCFJ4GQnfv6AqsA_3Ufum7ju';                   // ← Sostituisci con la tua anon public key
 
-let supabase = null;
+let supabaseClient = null
 let userId = null;
 let syncEnabled = false;
 let lastSync = 0;
@@ -2561,52 +2562,47 @@ if ('serviceWorker' in navigator) {
 
 function initSupabase() {
   try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Usiamo supabaseClient invece di supabase
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    // ✅ Controlla se abbiamo già un user_id salvato
     const savedUserId = localStorage.getItem('todolist_user_id');
     
     if (savedUserId) {
-      // ✅ Usa lo stesso user_id di prima (condiviso!)
       userId = savedUserId;
       syncEnabled = true;
-      toast('☁️ Cloud attivo', 'var(--accent2)');
-      loadActivitiesFromCloud();
+      loadActivitiesFromCloud().then(() => {
+          subscribeToChanges(); // <--- ATTIVA IL REALTIME
+      });
     } else {
-      // ✅ Nuovo utente, genera un user_id
-      supabase.auth.signInAnonymously().then(({ data, error }) => {
-        if (error) {
-          console.error('Auth error:', error);
-          return;
-        }
-        
+      supabaseClient.auth.signInAnonymously().then(({ data, error }) => {
+        if (error) return;
         userId = data.user.id.substring(0, 12).toUpperCase();
-        // ✅ SALVA l'user_id in localStorage
         localStorage.setItem('todolist_user_id', userId);
         syncEnabled = true;
-        
-        toast('☁️ Cloud attivo - Nuovo codice generato', 'var(--accent2)');
-        loadActivitiesFromCloud();
+        loadActivitiesFromCloud().then(() => {
+            subscribeToChanges(); // <--- ATTIVA IL REALTIME
+        });
       });
     }
   } catch (e) {
-    console.log('Supabase offline');
+    console.log('Supabase offline', e);
   }
 }
 
 async function loadActivitiesFromCloud() {
-  if (!syncEnabled || !userId) return;
-
+  if (!syncEnabled || !userId || !supabaseClient) return;
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('activities')
       .select('*')
       .eq('user_id', userId);
 
     if (error) throw error;
 
-    if (data && data.length > 0) {
+    if (data) {
+      // Uniamo i dati locali con quelli cloud (vince il cloud)
       activities = data;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(activities));
       render();
     }
   } catch (err) {
@@ -2627,16 +2623,32 @@ async function syncToCloud() {
       user_id: userId
     }));
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('activities')
-      .upsert(dataToSync, { onConflict: 'id' });
+      .upsert(dataToSync); // Supabase usa già la Primary Key 'id' per il conflitto
 
     if (error) throw error;
   } catch (err) {
     console.error('Sync error:', err);
   }
 }
+function subscribeToChanges() {
+  if (!supabaseClient || !userId) return;
 
+  // Ascolta ogni cambiamento nella tabella 'activities' per l'utente corrente
+  supabaseClient
+    .channel('realtime_activities')
+    .on('postgres_changes', { 
+      event: '*', 
+      schema: 'public', 
+      table: 'activities', 
+      filter: `user_id=eq.${userId}` 
+    }, (payload) => {
+      console.log('Cambio ricevuto dal cloud:', payload);
+      loadActivitiesFromCloud(); // Ricarica la lista quando ricevi un aggiornamento
+    })
+    .subscribe();
+}
 </script>
 </body>
 </html>
